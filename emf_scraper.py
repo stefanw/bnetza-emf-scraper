@@ -43,7 +43,7 @@ def to_float(s):
 class EMFScraper():
     proxies = None
     headers = {
-        'Origin': 'https://emf2.bundesnetzagentur.de',
+        'Origin': 'https://www.bundesnetzagentur.de',
         'Accept-Language': 'de;q=0.8',
         'X-Prototype-Version': '1.7.1',
         'X-Requested-With': 'XMLHttpRequest',
@@ -51,7 +51,7 @@ class EMFScraper():
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.75 Safari/537.36',
         'Content-type': 'application/json; charset=UTF-8 application/json',
         'Accept': 'application/json',
-        'Referer': 'https://emf2.bundesnetzagentur.de/karte/'
+        'Referer': 'https://www.bundesnetzagentur.de/emf-karte/'
     }
     CRYPTO_PW_RE = re.compile(r'var c=CryptoJS\.enc\.Utf8\.parse\("(.*?)"\);')
 
@@ -67,10 +67,10 @@ class EMFScraper():
         """
         Get valid session ID and store to cookie jar
         """
-        url = "https://emf2.bundesnetzagentur.de/karte/"
+        url = "https://www.bundesnetzagentur.de/emf-karte/"
         self.session = requests.Session()
         response = self.session.get(url, proxies=self.proxies)
-        js_url = 'https://emf2.bundesnetzagentur.de/karte/js.asmx/jscontent?set=emf'
+        js_url = 'https://www.bundesnetzagentur.de/emf-karte/js.asmx/jscontent?set=emf'
         response = self.session.get(js_url, proxies=self.proxies)
         match = self.CRYPTO_PW_RE.search(response.text)
         self.password = match.group(1)
@@ -90,7 +90,7 @@ class EMFScraper():
             }
         }
 
-        url = 'https://emf2.bundesnetzagentur.de/karte/Standortservice.asmx/%s' % kind
+        url = 'https://www.bundesnetzagentur.de/emf-karte/Standortservice.asmx/%s' % kind
 
         response = self.session.post(
             url,
@@ -164,7 +164,7 @@ class EMFScraper():
         """
         Fetch details on a certain antenna position
         """
-        url = "http://emf2.bundesnetzagentur.de/bnetzachart/Standort.vtl.aspx"
+        url = "https://www.bundesnetzagentur.de/bnetzachart/Standort.vtl.aspx"
         params = {
             "fid": fid
         }
