@@ -62,6 +62,11 @@ class EMFScraper():
             'GetStandorteFreigabeNF': self.get_default_details,
             'GetStandorteSmallCellFreigabe': self.get_default_details,
         }
+        self.data_extras = {
+            'GetStandorteFreigabeNF': {
+                'zoomIgnore': False
+            }
+        }
 
     def init_session(self):
         """
@@ -89,16 +94,20 @@ class EMFScraper():
                 "west": west
             }
         }
+        if kind in self.data_extras:
+            data.update(self.data_extras[kind])
 
         url = 'https://www.bundesnetzagentur.de/emf-karte/Standortservice.asmx/%s' % kind
-
+        logger.info('request %s: %s ', kind, bbox)
         response = self.session.post(
             url,
             headers=self.headers,
             data=json.dumps(data),
             proxies=self.proxies
         )
-
+        if 'text/html' in response.headers['Content-Type']:
+            logger.info('request failed %s: %s ', kind, bbox)
+            return None
         result = response.json()['d']
 
         if isinstance(result, dict) and result.get('SecMode'):
@@ -230,7 +239,10 @@ class EMFScraper():
 
     def load_bbox(self, bbox):
         for kind in self.kinds:
-            for position in self.get_positions(bbox, kind):
+            positions = self.get_positions(bbox, kind)
+            if positions is None:
+                return
+            for position in positions:
                 method = self.kinds[kind]
                 details = method(position['fID'], kind)
                 if details is not None:
