@@ -21,7 +21,7 @@ logger = logging.getLogger()
 # order: west, south, east, north
 BBOX = (5.98865807458, 47.3024876979, 15.0169958839, 54.983104153)
 
-# step with in degrees for partial worj through bounding box
+# step with in degrees for partial work through bounding box
 # (0.05 seems to work fine)
 STEP = 0.05
 
@@ -61,6 +61,8 @@ class EMFScraper():
             'GetMessorte': self.get_default_details,
             'GetAMSAktiv': self.get_default_details,
             'GetAFuFreigabe': self.get_default_details,
+            'GetStandorteFreigabeNF': self.get_default_details,
+            'GetStandorteSmallCellFreigabe': self.get_default_details,
         }
 
     def init_session(self):
@@ -70,7 +72,7 @@ class EMFScraper():
         url = "https://www.bundesnetzagentur.de/emf-karte/"
         self.session = requests.Session()
         response = self.session.get(url, proxies=self.proxies)
-        js_url = 'https://www.bundesnetzagentur.de/emf-karte/js.asmx/jscontent?set=emf'
+        js_url = 'https://www.bundesnetzagentur.de/emf-karte/js.asmx/jscontent?set=gsb2021'
         response = self.session.get(js_url, proxies=self.proxies)
         match = self.CRYPTO_PW_RE.search(response.text)
         self.password = match.group(1)
