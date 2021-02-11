@@ -45,10 +45,8 @@ class EMFScraper():
     headers = {
         'Origin': 'https://www.bundesnetzagentur.de',
         'Accept-Language': 'de;q=0.8',
-        'X-Prototype-Version': '1.7.1',
-        'X-Requested-With': 'XMLHttpRequest',
         'dataType': 'json',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.75 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36',
         'Content-type': 'application/json; charset=UTF-8 application/json',
         'Accept': 'application/json',
         'Referer': 'https://www.bundesnetzagentur.de/emf-karte/'
