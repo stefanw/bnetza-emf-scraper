@@ -49,7 +49,7 @@ class EMFScraper():
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36',
         'Content-type': 'application/json; charset=UTF-8 application/json',
         'Accept': 'application/json',
-        'Referer': 'https://www.bundesnetzagentur.de/emf-karte/'
+        'Referer': 'https://www.bundesnetzagentur.de/DE/Vportal/TK/Funktechnik/EMF/start.html'
     }
     CRYPTO_PW_RE = re.compile(r'var c=CryptoJS\.enc\.Utf8\.parse\("(.*?)"\);')
 
@@ -72,7 +72,7 @@ class EMFScraper():
         """
         Get valid session ID and store to cookie jar
         """
-        url = "https://www.bundesnetzagentur.de/emf-karte/"
+        url = "https://www.bundesnetzagentur.de/DE/Vportal/TK/Funktechnik/EMF/start.html"
         self.session = requests.Session()
         response = self.session.get(url, proxies=self.proxies)
         js_url = 'https://www.bundesnetzagentur.de/emf-karte/js.asmx/jscontent?set=gsb2021'
@@ -173,7 +173,7 @@ class EMFScraper():
         """
         Fetch details on a certain antenna position
         """
-        url = "https://www.bundesnetzagentur.de/bnetzachart/Standort.vtl.aspx"
+        url = "https://www.bundesnetzagentur.de/emf-karte/hf.aspx"
         params = {
             "fid": fid
         }
@@ -186,7 +186,8 @@ class EMFScraper():
             'kind': kind,
             "standortbescheinigung_nr": None,
             'datum': None,
-            "antennas": []
+            "antennas": [],
+            "safety_distances": [],
         }
         root = html.fromstring(r.text)
         bnr = root.findall(".//div[@id='standortbnr']")
@@ -199,31 +200,51 @@ class EMFScraper():
         if datum:
             out['datum'] = datum[0].text_content()
 
-        tables = root.findall(".//table[@id='antennenTable']/tbody")
-        if not tables:
-            return out
-
-        for row in tables[0].findall("tr"):
-            atype, height, direction, hdistance, vdistance = row.findall("td")
-            if direction.text_content().strip() == "ND":
-                direction = None
-            else:
-                direction = to_float(direction.text_content())
-            if hdistance.text_content().strip() == "nicht angegeben":
-                hdistance = None
-            else:
-                hdistance = to_float(hdistance.text_content())
-            if vdistance.text_content().strip() == "nicht angegeben":
-                vdistance = None
-            else:
-                vdistance = to_float(vdistance.text_content())
-            out["antennas"].append({
-                "height": to_float(height.text_content()),
-                "direction": direction,
-                "type": atype.text_content().strip(),
-                "hdistance": hdistance,
-                "vdistance": vdistance
-            })
+        tables = root.findall(".//div[@id='div_sendeantennen']/table")
+        if tables:
+            for row in tables[0].findall("tr")[1:]:
+                atype, height, direction, hdistance, vdistance = row.findall("td")
+                if direction.text_content().strip() == "ND":
+                    direction = None
+                else:
+                    direction = to_float(direction.text_content())
+                if hdistance.text_content().strip() == "nicht angegeben":
+                    hdistance = None
+                else:
+                    hdistance = to_float(hdistance.text_content())
+                if vdistance.text_content().strip() == "nicht angegeben":
+                    vdistance = None
+                else:
+                    vdistance = to_float(vdistance.text_content())
+                out["antennas"].append({
+                    "height": to_float(height.text_content()),
+                    "direction": direction,
+                    "type": atype.text_content().strip(),
+                    "hdistance": hdistance,
+                    "vdistance": vdistance
+                })
+        tables = root.findall(".//div[@id='div_sicherheitsabstaende']/table")
+        if tables:
+            for row in tables[0].findall("tr")[1:]:
+                label, hdistance, vdistance, height = row.findall("td")
+                try:
+                    hdistance = to_float(hdistance.text_content())
+                except ValueError:
+                    hdistance = None
+                try:
+                    vdistance = to_float(vdistance.text_content())
+                except ValueError:
+                    vdistance = None
+                try:
+                    height = to_float(height.text_content())
+                except ValueError:
+                    height = None
+                out["safety_distances"].append({
+                    "label": label.text_content().strip(),
+                    "hdistance": hdistance,
+                    "vdistance": vdistance,
+                    "height": height,
+                })
         return out
 
     def get_bbox(self):
