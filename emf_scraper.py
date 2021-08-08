@@ -258,6 +258,13 @@ class EMFScraper():
                 west += STEP
             south += STEP
 
+    def make_bbox(self, lnglat):
+        HSTEP = STEP / 2.0
+        return (
+            lnglat[0] - HSTEP, lnglat[1] - HSTEP,
+            lnglat[0] + HSTEP, lnglat[1] + HSTEP
+        )
+
     def load_bbox(self, bbox):
         for kind in self.kinds:
             positions = self.get_positions(bbox, kind)
@@ -269,6 +276,13 @@ class EMFScraper():
                 if details is not None:
                     details['position'] = position
                     yield details
+
+    def run_position(self, lnglat):
+        self.init_session()
+        bbox = self.make_bbox(lnglat)
+        for detail in self.load_bbox(bbox):
+            sys.stdout.write(json.dumps(detail))
+            sys.stdout.write('\n')
 
     def run(self):
         try:
@@ -301,6 +315,14 @@ class EMFScraper():
 
 
 def main():
+    if len(sys.argv) == 2:
+        logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+        pos = sys.argv[1].split(',')
+        lng, lat = float(pos[0]), float(pos[1])
+        #  10.216111,47.348333
+        scraper = EMFScraper()
+        return scraper.run_position((lng, lat))
+
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     os.makedirs('data/', exist_ok=True)
     result = None
