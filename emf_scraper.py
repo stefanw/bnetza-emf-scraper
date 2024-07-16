@@ -40,6 +40,15 @@ def to_float(s):
 
 class EMFScraper:
     proxies = None
+    init_headers = {
+        "Accept": "*/*",
+        "Host": "www.bundesnetzagentur.de",
+        "Origin": "https://www.bundesnetzagentur.de",
+        "Accept-Language": "de;q=0.8",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36",
+        "Referer": "https://www.bundesnetzagentur.de/DE/Vportal/TK/Funktechnik/EMF/start.html",
+    }
+
     headers = {
         "Origin": "https://www.bundesnetzagentur.de",
         "Accept-Language": "de;q=0.8",
@@ -70,11 +79,15 @@ class EMFScraper:
             "https://www.bundesnetzagentur.de/DE/Vportal/TK/Funktechnik/EMF/start.html"
         )
         self.session = requests.Session()
-        response = self.session.get(url, proxies=self.proxies)
+        response = self.session.get(
+            url, headers=self.init_headers, proxies=self.proxies
+        )
         js_url = (
             "https://www.bundesnetzagentur.de/emf-karte/js.asmx/jscontent?set=gsb2021"
         )
-        response = self.session.get(js_url, proxies=self.proxies)
+        response = self.session.get(
+            js_url, headers=self.init_headers, proxies=self.proxies
+        )
         match = self.CRYPTO_PW_RE.search(response.text)
         self.password = match.group(1)
 
