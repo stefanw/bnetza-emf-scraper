@@ -5,14 +5,12 @@ import os
 import re
 import sys
 
-from lxml import html
-
+import requests
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-
-import requests
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from lxml import html
 
 logger = logging.getLogger()
 
@@ -27,55 +25,55 @@ STEP = 0.05
 
 
 def unpad(s):
-    return s[0:-int(s[-1])]
+    return s[0 : -int(s[-1])]
 
 
 def to_float(s):
     if s is None:
         return s
-    s = s.strip().replace(',', '.')
+    s = s.strip().replace(",", ".")
     try:
         return float(s)
     except ValueError:
         return s
 
 
-class EMFScraper():
+class EMFScraper:
     proxies = None
     headers = {
-        'Origin': 'https://www.bundesnetzagentur.de',
-        'Accept-Language': 'de;q=0.8',
-        'dataType': 'json',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36',
-        'Content-type': 'application/json; charset=UTF-8 application/json',
-        'Accept': 'application/json',
-        'Referer': 'https://www.bundesnetzagentur.de/DE/Vportal/TK/Funktechnik/EMF/start.html'
+        "Origin": "https://www.bundesnetzagentur.de",
+        "Accept-Language": "de;q=0.8",
+        "dataType": "json",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36",
+        "Content-type": "application/json; charset=UTF-8 application/json",
+        "Accept": "application/json",
+        "Referer": "https://www.bundesnetzagentur.de/DE/Vportal/TK/Funktechnik/EMF/start.html",
     }
     CRYPTO_PW_RE = re.compile(r'var c=CryptoJS\.enc\.Utf8\.parse\("(.*?)"\);')
 
     def __init__(self):
         self.kinds = {
-            'GetStandorteFreigabe': self.get_standort_details,
-            'GetMessorte': self.get_default_details,
-            'GetAMSAktiv': self.get_default_details,
-            'GetAFuFreigabe': self.get_default_details,
-            'GetStandorteFreigabeNF': self.get_default_details,
-            'GetStandorteSmallCellFreigabe': self.get_default_details,
+            "GetStandorteFreigabe": self.get_standort_details,
+            "GetMessorte": self.get_default_details,
+            "GetAMSAktiv": self.get_default_details,
+            "GetAFuFreigabe": self.get_default_details,
+            "GetStandorteFreigabeNF": self.get_default_details,
+            "GetStandorteSmallCellFreigabe": self.get_default_details,
         }
-        self.data_extras = {
-            'GetStandorteFreigabeNF': {
-                'zoomIgnore': False
-            }
-        }
+        self.data_extras = {"GetStandorteFreigabeNF": {"zoomIgnore": False}}
 
     def init_session(self):
         """
         Get valid session ID and store to cookie jar
         """
-        url = "https://www.bundesnetzagentur.de/DE/Vportal/TK/Funktechnik/EMF/start.html"
+        url = (
+            "https://www.bundesnetzagentur.de/DE/Vportal/TK/Funktechnik/EMF/start.html"
+        )
         self.session = requests.Session()
         response = self.session.get(url, proxies=self.proxies)
-        js_url = 'https://www.bundesnetzagentur.de/emf-karte/js.asmx/jscontent?set=gsb2021'
+        js_url = (
+            "https://www.bundesnetzagentur.de/emf-karte/js.asmx/jscontent?set=gsb2021"
+        )
         response = self.session.get(js_url, proxies=self.proxies)
         match = self.CRYPTO_PW_RE.search(response.text)
         self.password = match.group(1)
@@ -86,32 +84,24 @@ class EMFScraper():
         """
         west, south, east, north = bbox
 
-        data = {
-            "Box": {
-                "nord": north,
-                "ost": east,
-                "sued": south,
-                "west": west
-            }
-        }
+        data = {"Box": {"nord": north, "ost": east, "sued": south, "west": west}}
         if kind in self.data_extras:
             data.update(self.data_extras[kind])
 
-        url = 'https://www.bundesnetzagentur.de/emf-karte/Standortservice.asmx/%s' % kind
-        logger.info('request %s: %s ', kind, bbox)
-        response = self.session.post(
-            url,
-            headers=self.headers,
-            data=json.dumps(data),
-            proxies=self.proxies
+        url = (
+            "https://www.bundesnetzagentur.de/emf-karte/Standortservice.asmx/%s" % kind
         )
-        if 'text/html' in response.headers['Content-Type']:
-            logger.info('request failed %s: %s ', kind, bbox)
+        logger.info("request %s: %s ", kind, bbox)
+        response = self.session.post(
+            url, headers=self.headers, data=json.dumps(data), proxies=self.proxies
+        )
+        if "text/html" in response.headers["Content-Type"]:
+            logger.info("request failed %s: %s ", kind, bbox)
             return None
-        result = response.json()['d']
+        result = response.json()["d"]
 
-        if isinstance(result, dict) and result.get('SecMode'):
-            result = self.decrypt(result['Result'])
+        if isinstance(result, dict) and result.get("SecMode"):
+            result = self.decrypt(result["Result"])
 
         return result
 
@@ -142,15 +132,15 @@ class EMFScraper():
         """
         backend = default_backend()
 
-        iv = bytes.fromhex('a5a8d2e9c1721ae0e84ad660c472b1f3')
-        pw = self.password.encode('utf-8')
-        salt = 'cryptography123example'.encode('utf-8')
+        iv = bytes.fromhex("a5a8d2e9c1721ae0e84ad660c472b1f3")
+        pw = self.password.encode("utf-8")
+        salt = "cryptography123example".encode("utf-8")
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA1(),
             length=int(128 / 8),
             salt=salt,
             iterations=1000,
-            backend=backend
+            backend=backend,
         )
         key = kdf.derive(pw)
 
@@ -161,31 +151,23 @@ class EMFScraper():
         decryptor = cipher.decryptor()
         decrypted = decryptor.update(data_bytes) + decryptor.finalize()
 
-        return json.loads(unpad(decrypted).decode('utf-8'))
+        return json.loads(unpad(decrypted).decode("utf-8"))
 
     def get_default_details(self, fid, kind):
-        return {
-            'fid': fid,
-            'kind': kind
-        }
+        return {"fid": fid, "kind": kind}
 
     def get_standort_details(self, fid, kind):
         """
         Fetch details on a certain antenna position
         """
         url = "https://www.bundesnetzagentur.de/emf-karte/hf.aspx"
-        params = {
-            "fid": fid
-        }
-        r = self.session.get(
-            url, params=params,
-            headers=self.headers
-        )
+        params = {"fid": fid}
+        r = self.session.get(url, params=params, headers=self.headers)
         out = {
             "fid": fid,
-            'kind': kind,
+            "kind": kind,
             "standortbescheinigung_nr": None,
-            'datum': None,
+            "datum": None,
             "antennas": [],
             "safety_distances": [],
         }
@@ -198,7 +180,7 @@ class EMFScraper():
 
         datum = root.xpath(".//div[@id='datum']/span[2]")
         if datum:
-            out['datum'] = datum[0].text_content()
+            out["datum"] = datum[0].text_content()
 
         tables = root.findall(".//div[@id='div_sendeantennen']/table")
         if tables:
@@ -216,13 +198,15 @@ class EMFScraper():
                     vdistance = None
                 else:
                     vdistance = to_float(vdistance.text_content())
-                out["antennas"].append({
-                    "height": to_float(height.text_content()),
-                    "direction": direction,
-                    "type": atype.text_content().strip(),
-                    "hdistance": hdistance,
-                    "vdistance": vdistance
-                })
+                out["antennas"].append(
+                    {
+                        "height": to_float(height.text_content()),
+                        "direction": direction,
+                        "type": atype.text_content().strip(),
+                        "hdistance": hdistance,
+                        "vdistance": vdistance,
+                    }
+                )
         tables = root.findall(".//div[@id='div_sicherheitsabstaende']/table")
         if tables:
             for row in tables[0].findall("tr")[1:]:
@@ -239,12 +223,14 @@ class EMFScraper():
                     height = to_float(height.text_content())
                 except ValueError:
                     height = None
-                out["safety_distances"].append({
-                    "label": label.text_content().strip(),
-                    "hdistance": hdistance,
-                    "vdistance": vdistance,
-                    "height": height,
-                })
+                out["safety_distances"].append(
+                    {
+                        "label": label.text_content().strip(),
+                        "hdistance": hdistance,
+                        "vdistance": vdistance,
+                        "height": height,
+                    }
+                )
         return out
 
     def get_bbox(self):
@@ -261,8 +247,10 @@ class EMFScraper():
     def make_bbox(self, lnglat):
         HSTEP = STEP / 2.0
         return (
-            lnglat[0] - HSTEP, lnglat[1] - HSTEP,
-            lnglat[0] + HSTEP, lnglat[1] + HSTEP
+            lnglat[0] - HSTEP,
+            lnglat[1] - HSTEP,
+            lnglat[0] + HSTEP,
+            lnglat[1] + HSTEP,
         )
 
     def load_bbox(self, bbox):
@@ -272,9 +260,9 @@ class EMFScraper():
                 return
             for position in positions:
                 method = self.kinds[kind]
-                details = method(position['fID'], kind)
+                details = method(position["fID"], kind)
                 if details is not None:
-                    details['position'] = position
+                    details["position"] = position
                     yield details
 
     def run_position(self, lnglat):
@@ -282,11 +270,11 @@ class EMFScraper():
         bbox = self.make_bbox(lnglat)
         for detail in self.load_bbox(bbox):
             sys.stdout.write(json.dumps(detail))
-            sys.stdout.write('\n')
+            sys.stdout.write("\n")
 
     def run(self):
         try:
-            with open('data/bbox.json') as f:
+            with open("data/bbox.json") as f:
                 already = set(json.load(f))
         except IOError:
             already = set()
@@ -294,37 +282,37 @@ class EMFScraper():
         self.init_session()
 
         try:
-            with open('data/positions.jsonl', 'a') as f:
+            with open("data/positions.jsonl", "a") as f:
                 for bbox in self.get_bbox():
-                    bbox_key = '|'.join(str(x) for x in bbox)
+                    bbox_key = "|".join(str(x) for x in bbox)
                     if bbox_key in already:
                         continue
-                    logger.info('Current bbox: %s', bbox)
+                    logger.info("Current bbox: %s", bbox)
                     detail_count = 0
                     for detail in self.load_bbox(bbox):
                         f.write(json.dumps(detail))
-                        f.write('\n')
+                        f.write("\n")
                         detail_count += 1
                     if detail_count:
-                        logger.info('Number of details %s', detail_count)
+                        logger.info("Number of details %s", detail_count)
                     already.add(bbox_key)
             return True
         finally:
-            with open('data/bbox.json', 'w') as f:
+            with open("data/bbox.json", "w") as f:
                 json.dump(list(already), f)
 
 
 def main():
     if len(sys.argv) == 2:
         logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-        pos = sys.argv[1].split(',')
+        pos = sys.argv[1].split(",")
         lng, lat = float(pos[0]), float(pos[1])
         #  10.216111,47.348333
         scraper = EMFScraper()
         return scraper.run_position((lng, lat))
 
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-    os.makedirs('data/', exist_ok=True)
+    os.makedirs("data/", exist_ok=True)
     result = None
     while result is None:
         try:
