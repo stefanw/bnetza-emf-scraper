@@ -63,7 +63,7 @@ class EMFScraper:
     def __init__(self):
         self.kinds = {
             "GetStandorteFreigabe": self.get_standort_details,
-            "GetMessorte": self.get_default_details,
+            "GetMessorte": self.get_messorte_details,
             "GetAMSAktiv": self.get_default_details,
             "GetAFuFreigabe": self.get_default_details,
             "GetStandorteFreigabeNF": self.get_default_details,
@@ -245,6 +245,28 @@ class EMFScraper:
                     }
                 )
         return out
+
+    def get_messorte_details(self, fid, kind):
+        """
+        Fetch details on a certain messort
+        """
+        url = "https://www.bundesnetzagentur.de/bnetzachart/Messort.vtl.aspx"
+        params = {"fid": fid}
+        r = self.session.get(url, params=params, headers=self.headers)
+        out = {
+            "fid": fid,
+            "kind": kind,
+            "bed12": None,
+            "bed34": None,
+        }
+
+        res = re.findall( r"(\d+(?:.\d+)?) Prozent", r.text )
+        if len(res) == 2:
+            out["bed12"] = float(res[0].replace(',','.'))
+            out["bed34"] = float(res[1].replace(',','.'))
+            return out
+        else:
+            return None
 
     def get_bbox(self):
         south = BBOX[1]
