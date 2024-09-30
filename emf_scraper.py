@@ -183,6 +183,7 @@ class EMFScraper:
             "datum": None,
             "antennas": [],
             "safety_distances": [],
+            "methodSTOB": None,
         }
         root = html.fromstring(r.text)
         bnr = root.findall(".//div[@id='standortbnr']")
@@ -244,6 +245,18 @@ class EMFScraper:
                         "height": height,
                     }
                 )
+
+        # determine safety distances method
+        if root.xpath(".//div[@id='standortWattwaechter']"):
+            # - "_f_eldtheoretisch"
+            out["methodSTOB"] = "f"
+        elif root.xpath(".//div[@id='standortGrenzmessung']"):
+            # - "_m_esstechnisch"
+            out["methodSTOB"] = "m"
+        else:
+            # - "_r_echnerisch"
+            out["methodSTOB"] = "r"
+
         return out
 
     def get_messorte_details(self, fid, kind):
@@ -260,10 +273,10 @@ class EMFScraper:
             "bed34": None,
         }
 
-        res = re.findall( r"(\d+(?:.\d+)?) Prozent", r.text )
+        res = re.findall(r"(\d+(?:.\d+)?) Prozent", r.text)
         if len(res) == 2:
-            out["bed12"] = float(res[0].replace(',','.'))
-            out["bed34"] = float(res[1].replace(',','.'))
+            out["bed12"] = float(res[0].replace(",", "."))
+            out["bed34"] = float(res[1].replace(",", "."))
             return out
         else:
             return None
