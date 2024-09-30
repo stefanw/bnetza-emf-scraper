@@ -329,13 +329,17 @@ class EMFScraper:
 
         self.init_session()
 
+        bbox_count = sum(1 for _ in self.get_bbox())
+        count = 0
         try:
             with open("data/positions.jsonl", "a") as f:
                 for bbox in self.get_bbox():
+                    count += 1
                     bbox_key = "|".join(str(x) for x in bbox)
                     if bbox_key in already:
                         continue
                     logger.info("Current bbox: %s", bbox)
+                    logger.info("Progress: %s %%", round(count / bbox_count * 100, 1))
                     detail_count = 0
                     for detail in self.load_bbox(bbox):
                         f.write(json.dumps(detail))
