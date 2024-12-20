@@ -184,6 +184,7 @@ class EMFScraper:
             "antennas": [],
             "safety_distances": [],
             "methodSTOB": None,
+            "providers": None,
         }
         root = html.fromstring(r.text)
         bnr = root.findall(".//div[@id='standortbnr']")
@@ -256,6 +257,12 @@ class EMFScraper:
         else:
             # - "_r_echnerisch"
             out["methodSTOB"] = "r"
+
+        # determine providers
+        providers = root.findall(".//div[@id='div_mobilfunkanbieter']/img")
+        if providers:
+            alt_tags = sorted([img.get("alt") for img in providers if img.get("alt")])
+            out["providers"] = alt_tags
 
         return out
 
@@ -342,7 +349,7 @@ class EMFScraper:
                     logger.info("Progress: %s %%", round(count / bbox_count * 100, 1))
                     detail_count = 0
                     for detail in self.load_bbox(bbox):
-                        f.write(json.dumps(detail))
+                        f.write(json.dumps(detail, ensure_ascii=False))
                         f.write("\n")
                         detail_count += 1
                     if detail_count:
